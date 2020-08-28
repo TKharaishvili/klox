@@ -3,14 +3,17 @@ import java.io.InputStreamReader
 import java.nio.charset.Charset
 import java.nio.file.Files
 import java.nio.file.Paths
+import kotlin.system.exitProcess
 
-var hadError = false;
+val interpreter = Interpreter()
+var hadError = false
+var hadRuntimeError = false
 
 fun main(args: Array<String>) {
     when {
         args.size > 1 -> {
             println("Usage: klox [script]")
-            System.exit(64);
+            exitProcess(64)
         }
         args.size == 1 -> {
             runFile(args[0])
@@ -25,8 +28,12 @@ fun runFile(path: String) {
     val bytes = Files.readAllBytes(Paths.get(path))
     run(String(bytes, Charset.defaultCharset()))
 
+    // Indicate an error in the exit code
     if (hadError)
-        System.exit(65)
+        exitProcess(65)
+
+    if (hadRuntimeError)
+        exitProcess(70)
 }
 
 fun runPrompt() {
@@ -50,7 +57,7 @@ fun run(source: String) {
     if (hadError || expression == null)
         return
 
-    println(AstPrinter().print(expression))
+    interpreter.interpret(expression)
 }
 
 fun error(line: Int, message: String) {
@@ -69,5 +76,10 @@ object Lox {
         } else {
             report(token.line, " at '${token.lexeme}'", message)
         }
+    }
+
+    fun runtimeError(error: RuntimeError) {
+        println("${error.message}\n[line ${error.token.line}]")
+        hadRuntimeError = true
     }
 }
