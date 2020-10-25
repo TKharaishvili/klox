@@ -60,8 +60,7 @@ class Scanner {
     }
 
     private fun identifier() {
-        val c = peek()
-        while (c.isAlpha() || c in digitRange) advance()
+        while (peek().isAlphaNumeric()) advance()
 
         // See if the identifier is a reserved word
         val text = source.substring(start, current)
@@ -122,6 +121,8 @@ class Scanner {
     private fun peekNext() = if (current + 1 > source.length) Char.MIN_VALUE else source[current + 1]
 
     private fun Char.isAlpha() = this in 'a'..'z' || this in 'A'..'Z' || this == '_'
+
+    private fun Char.isAlphaNumeric() = this.isAlpha() || this in digitRange
 
     private fun addToken(type: TokenType) {
         addToken(type, null)
