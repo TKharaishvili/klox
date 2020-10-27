@@ -33,6 +33,14 @@ class AstPrinter : Expr.Visitor<String> {
 
         return builder.toString()
     }
+
+    override fun visitAssignExpr(expr: Expr.Assign): String {
+        return "(= ${expr.name.lexeme} ${expr.value.accept(this)})"
+    }
+
+    override fun visitVariableExpr(expr: Expr.Variable): String {
+        return expr.name.lexeme
+    }
 }
 
 fun main(args: Array<String>) {

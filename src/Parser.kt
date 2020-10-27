@@ -5,16 +5,72 @@ class Parser(private val tokens: List<Token>) {
 
     private var current = 0
 
-    fun parse(): Expr? {
-        return try {
-            expression()
-        } catch (error: ParseError) {
-            null
+    fun parse(): List<Stmt?> {
+        val statements = mutableListOf<Stmt?>()
+        while (!isAtEnd()) {
+            statements.add(declaration())
         }
+        return statements
     }
 
-    private fun expression(): Expr {
-        return equality()
+    private fun expression() = assignment()
+
+    private fun declaration() = try {
+        if (match(TokenType.VAR)) varDeclaration() else statement()
+    } catch (error: ParseError) {
+        synchronize()
+        null
+    }
+
+    private fun statement() = when {
+        match(TokenType.PRINT) -> printStatement()
+        match(TokenType.LEFT_BRACE) -> Stmt.Block(block())
+        else -> expressionStatement()
+    }
+
+    private fun printStatement(): Stmt {
+        val value = expression()
+        consume(TokenType.SEMICOLON, "Expect ';' after value.")
+        return Stmt.Print(value)
+    }
+
+    private fun varDeclaration(): Stmt {
+        val name = consume(TokenType.IDENTIFIER, "Expect variable name.")
+        val initializer = if (match(TokenType.EQUAL)) expression() else null
+        consume(TokenType.SEMICOLON, "Expect ';' after variable declaration.")
+        return Stmt.Var(name, initializer)
+    }
+
+    private fun expressionStatement(): Stmt {
+        val expr = expression()
+        consume(TokenType.SEMICOLON, "Expect ';' after expression.")
+        return Stmt.Expression(expr)
+    }
+
+    private fun block(): List<Stmt?> {
+        val statements = mutableListOf<Stmt?>()
+
+        while (!TokenType.RIGHT_BRACE.check() && !isAtEnd()) {
+            statements.add(declaration())
+        }
+
+        consume(TokenType.RIGHT_BRACE, "Expect '}' after block.")
+        return statements
+    }
+
+    private fun assignment(): Expr {
+        val expr = equality()
+
+        if (match(TokenType.EQUAL)) {
+            val equals = previous()
+            val value = assignment()
+
+            if (expr is Expr.Variable) {
+                return Expr.Assign(expr.name, value)
+            }
+            error(equals, "Invalid assignment target.")
+        }
+        return expr
     }
 
     private fun equality() = binary(::comparison, TokenType.BANG_EQUAL, TokenType.EQUAL_EQUAL)
@@ -50,6 +106,7 @@ class Parser(private val tokens: List<Token>) {
         match(TokenType.TRUE) -> Expr.Literal(true)
         match(TokenType.NIL) -> Expr.Literal(null)
         match(TokenType.NUMBER, TokenType.STRING) -> Expr.Literal(previous().literal)
+        match(TokenType.IDENTIFIER) -> Expr.Variable(previous())
         match(TokenType.LEFT_PAREN) -> {
             val expr = expression()
             consume(TokenType.RIGHT_PAREN, "Expect ')' after expression.")

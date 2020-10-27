@@ -1,7 +1,11 @@
-class Interpreter : Expr.Visitor<Any?> {
-    fun interpret(expression: Expr) = try {
-        val value = evaluate(expression)
-        println(stringify(value))
+class Interpreter : Expr.Visitor<Any?>, Stmt.Visitor<Unit> {
+    private var environment = Environment()
+
+    fun interpret(statements: List<Stmt?>) = try {
+        for (statement in statements) {
+            //if the execution reaches this point, the statement can NEVER be null!
+            execute(statement!!)
+        }
     } catch (error: RuntimeError) {
         Lox.runtimeError(error)
     }
@@ -73,6 +77,8 @@ class Interpreter : Expr.Visitor<Any?> {
         }
     }
 
+    override fun visitVariableExpr(expr: Expr.Variable): Any? = environment.get(expr.name)
+
     private fun mustBeNumbers(operator: Token) = RuntimeError(operator, "Operands must be numbers.")
 
     private fun isTruthy(obj: Any?) = when (obj) {
@@ -100,4 +106,44 @@ class Interpreter : Expr.Visitor<Any?> {
     }
 
     private fun evaluate(expr: Expr) = expr.accept(this)
+
+    private fun execute(stmt: Stmt) = stmt.accept(this)
+
+    private fun executeBlock(statements: List<Stmt?>, environment: Environment) {
+        val previous = this.environment
+        try {
+            this.environment = environment
+
+            for (statement in statements) {
+                //if the execution reaches this point, the statement can NEVER be null!
+                execute(statement!!)
+            }
+        } finally {
+            this.environment = previous
+        }
+    }
+
+    override fun visitBlockStmt(stmt: Stmt.Block) {
+        executeBlock(stmt.statements, Environment(environment))
+    }
+
+    override fun visitExpressionStmt(stmt: Stmt.Expression) {
+        evaluate(stmt.expression)
+    }
+
+    override fun visitPrintStmt(stmt: Stmt.Print) {
+        val value = evaluate(stmt.expression)
+        println(stringify(value))
+    }
+
+    override fun visitVarStmt(stmt: Stmt.Var) {
+        val value = if (stmt.initializer != null) evaluate(stmt.initializer) else null
+        environment.define(stmt.name.lexeme, value)
+    }
+
+    override fun visitAssignExpr(expr: Expr.Assign): Any? {
+        val value = evaluate(expr.value)
+        environment.assign(expr.name, value)
+        return value
+    }
 }
