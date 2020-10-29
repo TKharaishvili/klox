@@ -23,9 +23,52 @@ class Parser(private val tokens: List<Token>) {
     }
 
     private fun statement() = when {
+        match(TokenType.FOR) -> forStatement()
+        match(TokenType.IF) -> ifStatement()
         match(TokenType.PRINT) -> printStatement()
+        match(TokenType.WHILE) -> whileStatement()
         match(TokenType.LEFT_BRACE) -> Stmt.Block(block())
         else -> expressionStatement()
+    }
+
+    private fun forStatement(): Stmt {
+        consume(TokenType.LEFT_PAREN, "Expect '(' after 'for'.")
+
+        val initializer = when {
+            match(TokenType.SEMICOLON) -> null
+            match(TokenType.VAR) -> varDeclaration()
+            else -> expressionStatement()
+        }
+
+        val condition = if (!TokenType.SEMICOLON.check()) expression() else null
+        consume(TokenType.SEMICOLON, "Expect ';' after loop condition.")
+
+        val increment = if (!TokenType.RIGHT_PAREN.check()) expression() else null
+        consume(TokenType.RIGHT_PAREN, "Expect ')' after for clauses.")
+
+        var body = statement()
+
+        if (increment != null) {
+            body = Stmt.Block(listOf(body, Stmt.Expression(increment)))
+        }
+
+        body = Stmt.While(condition ?: Expr.Literal(true), body)
+
+        if (initializer != null) {
+            body = Stmt.Block(listOf(initializer, body))
+        }
+        return body
+    }
+
+    private fun ifStatement(): Stmt {
+        consume(TokenType.LEFT_PAREN, "Expect '(' after 'if'.")
+        val condition = expression()
+        consume(TokenType.RIGHT_PAREN, "Expect ')' after if condition.")
+
+        val thenBranch = statement()
+        val elseBranch = if (match(TokenType.ELSE)) statement() else null
+
+        return Stmt.If(condition, thenBranch, elseBranch)
     }
 
     private fun printStatement(): Stmt {
@@ -39,6 +82,14 @@ class Parser(private val tokens: List<Token>) {
         val initializer = if (match(TokenType.EQUAL)) expression() else null
         consume(TokenType.SEMICOLON, "Expect ';' after variable declaration.")
         return Stmt.Var(name, initializer)
+    }
+
+    private fun whileStatement(): Stmt {
+        consume(TokenType.LEFT_PAREN, "Expect '(' after 'while'.")
+        val condition = expression()
+        consume(TokenType.RIGHT_PAREN, "Expect ')' after condition.")
+        val body = statement()
+        return Stmt.While(condition, body)
     }
 
     private fun expressionStatement(): Stmt {
@@ -59,7 +110,7 @@ class Parser(private val tokens: List<Token>) {
     }
 
     private fun assignment(): Expr {
-        val expr = equality()
+        val expr = or()
 
         if (match(TokenType.EQUAL)) {
             val equals = previous()
@@ -73,6 +124,14 @@ class Parser(private val tokens: List<Token>) {
         return expr
     }
 
+    private fun or() = logical(::and, TokenType.OR)
+
+    private fun and() = logical(::equality, TokenType.AND)
+
+    private fun logical(operation: () -> Expr, type: TokenType): Expr {
+        return binaryOrLogical(operation, { l, o, r -> Expr.Logical(l, o, r) }, type)
+    }
+
     private fun equality() = binary(::comparison, TokenType.BANG_EQUAL, TokenType.EQUAL_EQUAL)
 
     private fun comparison() = binary(::addition, TokenType.GREATER, TokenType.GREATER_EQUAL, TokenType.LESS, TokenType.LESS_EQUAL)
@@ -82,12 +141,16 @@ class Parser(private val tokens: List<Token>) {
     private fun multiplication() = binary(::unary, TokenType.SLASH, TokenType.STAR)
 
     private fun binary(operation: () -> Expr, vararg types: TokenType): Expr {
+        return binaryOrLogical(operation, { l, o, r -> Expr.Binary(l, o, r) }, *types)
+    }
+
+    private fun binaryOrLogical(operation: () -> Expr, ctor: (left: Expr, operator: Token, right: Expr) -> Expr, vararg types: TokenType): Expr {
         var expr = operation()
 
         while (match(*types)) {
             val operator = previous()
             val right = operation()
-            expr = Expr.Binary(expr, operator, right)
+            expr = ctor(expr, operator, right)
         }
         return expr
     }
