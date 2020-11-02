@@ -1,5 +1,14 @@
 class Interpreter : Expr.Visitor<Any?>, Stmt.Visitor<Unit> {
-    private var environment = Environment()
+    public val globals = Environment()
+    private var environment = globals
+
+    constructor() {
+        globals.define("clock", object : LoxCallable {
+            override val arity: Int = 0
+            override fun call(interpreter: Interpreter, arguments: List<Any?>) = System.currentTimeMillis() / 1000.0
+            override fun toString() = "<native fn>"
+        })
+    }
 
     fun interpret(statements: List<Stmt?>) = try {
         for (statement in statements) {
@@ -53,6 +62,21 @@ class Interpreter : Expr.Visitor<Any?>, Stmt.Visitor<Unit> {
             // Unreachable
             else -> null
         }
+    }
+
+    override fun visitCallExpr(expr: Expr.Call): Any? {
+        val callee = evaluate(expr.callee)
+        val arguments = expr.arguments.map { evaluate(it) }
+
+        if (callee !is LoxCallable) {
+            throw RuntimeError(expr.paren, "Can only call functions and classes.")
+        }
+
+        if (arguments.size != callee.arity) {
+            throw RuntimeError(expr.paren, "Expected ${callee.arity} arguments but got ${arguments.size}")
+        }
+
+        return callee.call(this, arguments)
     }
 
     override fun visitGroupingExpr(expr: Expr.Grouping): Any? {
@@ -116,7 +140,7 @@ class Interpreter : Expr.Visitor<Any?>, Stmt.Visitor<Unit> {
 
     private fun execute(stmt: Stmt) = stmt.accept(this)
 
-    private fun executeBlock(statements: List<Stmt?>, environment: Environment) {
+    public fun executeBlock(statements: List<Stmt?>, environment: Environment) {
         val previous = this.environment
         try {
             this.environment = environment
@@ -138,6 +162,11 @@ class Interpreter : Expr.Visitor<Any?>, Stmt.Visitor<Unit> {
         evaluate(stmt.expression)
     }
 
+    override fun visitFunctionStmt(stmt: Stmt.Function) {
+        val function = LoxFunction(stmt, environment)
+        environment.define(stmt.name.lexeme, function)
+    }
+
     override fun visitIfStmt(stmt: Stmt.If) {
         if (isTruthy(evaluate(stmt.condition))) {
             execute(stmt.thenBranch)
@@ -149,6 +178,11 @@ class Interpreter : Expr.Visitor<Any?>, Stmt.Visitor<Unit> {
     override fun visitPrintStmt(stmt: Stmt.Print) {
         val value = evaluate(stmt.expression)
         println(stringify(value))
+    }
+
+    override fun visitReturnStmt(stmt: Stmt.Return) {
+        val value = if (stmt.value != null) evaluate(stmt.value) else null
+        throw Return(value)
     }
 
     override fun visitVarStmt(stmt: Stmt.Var) {
