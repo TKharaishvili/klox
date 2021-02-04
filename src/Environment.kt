@@ -30,4 +30,19 @@ class Environment(private val enclosing: Environment? = null) {
     fun define(name: String, value: Any?) {
         values[name] = value
     }
+
+    private fun ancestor(distance: Int): Environment {
+        var env = this
+        for (i in 0 until distance) {
+            // We assume that the resolver did it's job correctly and the distance is accurate
+            env = env.enclosing!!
+        }
+        return env
+    }
+
+    fun getAt(distance: Int, name: String) = ancestor(distance).values[name]
+
+    fun assignAt(distance: Int, name: Token, value: Any?) {
+        ancestor(distance).values[name.lexeme] = value
+    }
 }
