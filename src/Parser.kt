@@ -17,6 +17,7 @@ class Parser(private val tokens: List<Token>) {
 
     private fun declaration() = try {
         when {
+            match(TokenType.CLASS) -> classDeclaration()
             match(TokenType.FUN) -> function("function")
             match(TokenType.VAR) -> varDeclaration()
             else -> statement()
@@ -24,6 +25,20 @@ class Parser(private val tokens: List<Token>) {
     } catch (error: ParseError) {
         synchronize()
         null
+    }
+
+    private fun classDeclaration(): Stmt {
+        val name = consume(TokenType.IDENTIFIER, "Expect class name.")
+        consume(TokenType.LEFT_BRACE, "Expect '{' before class body.")
+
+        val methods = mutableListOf<Stmt.Function>()
+        while (!TokenType.RIGHT_BRACE.check() && !isAtEnd()) {
+            methods.add(function("method"))
+        }
+
+        consume(TokenType.RIGHT_BRACE, "Expect '}' after class body")
+
+        return Stmt.Class(name, methods)
     }
 
     private fun statement() = when {
@@ -149,6 +164,8 @@ class Parser(private val tokens: List<Token>) {
 
             if (expr is Expr.Variable) {
                 return Expr.Assign(expr.name, value)
+            } else if (expr is Expr.Get) {
+                return Expr.Set(expr.obj, expr.name, value)
             }
             error(equals, "Invalid assignment target.")
         }
@@ -216,8 +233,11 @@ class Parser(private val tokens: List<Token>) {
         while (true) {
             if (match(TokenType.LEFT_PAREN)) {
                 expr = finishCall(expr)
+            } else if (match(TokenType.DOT)) {
+                val name = consume(TokenType.IDENTIFIER, "Expect property name after '.'.")
+                expr = Expr.Get(expr, name)
             } else {
-                break;
+                break
             }
         }
         return expr
@@ -228,6 +248,7 @@ class Parser(private val tokens: List<Token>) {
         match(TokenType.TRUE) -> Expr.Literal(true)
         match(TokenType.NIL) -> Expr.Literal(null)
         match(TokenType.NUMBER, TokenType.STRING) -> Expr.Literal(previous().literal)
+        match(TokenType.THIS) -> Expr.This(previous())
         match(TokenType.IDENTIFIER) -> Expr.Variable(previous())
         match(TokenType.LEFT_PAREN) -> {
             val expr = expression()
