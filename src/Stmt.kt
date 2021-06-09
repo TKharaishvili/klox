@@ -14,7 +14,7 @@ abstract class Stmt {
     class Block(val statements: List<Stmt?>) : Stmt() {
         override fun <R> accept(visitor: Visitor<R>) = visitor.visitBlockStmt(this)
     }
-    class Class(val name: Token, val methods: List<Stmt.Function>) : Stmt() {
+    class Class(val name: Token, val superclass: Expr.Variable?, val methods: List<Stmt.Function>) : Stmt() {
         override fun <R> accept(visitor: Visitor<R>) = visitor.visitClassStmt(this)
     }
     class Expression(val expression: Expr) : Stmt() {

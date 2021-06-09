@@ -10,6 +10,7 @@ fun generateCode(outputDir: String) {
             "Literal | val value: Any?",
             "Logical | val left: Expr, val operator: Token, val right: Expr",
             "Set | val obj: Expr, val name: Token, val value: Expr",
+            "Super | val keyword: Token, val method: Token",
             "This | val keyword: Token",
             "Unary | val operator: Token, val right: Expr",
             "Variable | val name: Token"
@@ -17,7 +18,7 @@ fun generateCode(outputDir: String) {
 
     defineAst(outputDir, "Stmt", listOf(
             "Block | val statements: List<Stmt?>",
-            "Class | val name: Token, val methods: List<Stmt.Function>",
+            "Class | val name: Token, val superclass: Expr.Variable?, val methods: List<Stmt.Function>",
             "Expression | val expression: Expr",
             "Function | val name: Token, val params: List<Token>, val body: List<Stmt?>",
             "If | val condition: Expr, val thenBranch: Stmt, val elseBranch: Stmt?",
@@ -55,7 +56,7 @@ fun defineVisitor(writer: PrintWriter, baseName: String, types: List<String>) {
 
     for (type in types) {
         val typeName = type.split("|")[0].trim()
-        writer.println("        fun visit$typeName$baseName(${baseName.toLowerCase()}: $typeName): R")
+        writer.println("        fun visit$typeName$baseName(${baseName.lowercase()}: $typeName): R")
     }
 
     writer.println("    }")
