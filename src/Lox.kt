@@ -5,9 +5,9 @@ import java.nio.file.Files
 import java.nio.file.Paths
 import kotlin.system.exitProcess
 
-val interpreter = Interpreter()
-var hadError = false
-var hadRuntimeError = false
+private val interpreter = Interpreter()
+private var hadError = false
+private var hadRuntimeError = false
 
 fun main(args: Array<String>) {
     when {
@@ -24,7 +24,7 @@ fun main(args: Array<String>) {
     }
 }
 
-fun runFile(path: String) {
+private fun runFile(path: String) {
     val bytes = Files.readAllBytes(Paths.get(path))
     run(String(bytes, Charset.defaultCharset()))
 
@@ -36,7 +36,7 @@ fun runFile(path: String) {
         exitProcess(70)
 }
 
-fun runPrompt() {
+private fun runPrompt() {
     val input = InputStreamReader(System.`in`)
     val reader = BufferedReader(input)
 
@@ -47,7 +47,7 @@ fun runPrompt() {
     }
 }
 
-fun run(source: String) {
+private fun run(source: String) {
     val scanner = Scanner(source)
     val tokens = scanner.scanTokens()
     val parser = Parser(tokens)
@@ -67,16 +67,16 @@ fun run(source: String) {
     interpreter.interpret(statements)
 }
 
-fun error(line: Int, message: String) {
-    report(line, "", message)
-}
-
-fun report(line: Int, where: String, message: String) {
+private fun report(line: Int, where: String, message: String) {
     println("[line $line] Error $where: $message")
     hadError = true
 }
 
 object Lox {
+    fun error(line: Int, message: String) {
+        report(line, "", message)
+    }
+
     fun error(token: Token, message: String) {
         if (token.type == TokenType.EOF) {
             report(token.line, " at end", message)

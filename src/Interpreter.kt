@@ -1,9 +1,9 @@
 class Interpreter : Expr.Visitor<Any?>, Stmt.Visitor<Unit> {
-    public val globals = Environment()
+    private val globals = Environment()
     private var environment = globals
     private val locals = mutableMapOf<Expr, Int>()
 
-    constructor() {
+    init {
         globals.define("clock", object : LoxCallable {
             override val arity: Int = 0
             override fun call(interpreter: Interpreter, arguments: List<Any?>) = System.currentTimeMillis() / 1000.0
@@ -116,11 +116,14 @@ class Interpreter : Expr.Visitor<Any?>, Stmt.Visitor<Unit> {
         return value
     }
 
-    override fun visitSuperExpr(expr: Expr.Super): Any? {
+    override fun visitSuperExpr(expr: Expr.Super): Any {
         val distance = locals[expr]!!
         val superclass = environment.getAt(distance, "super") as LoxClass
         val obj = environment.getAt(distance - 1, "this") as LoxInstance
-        val method = superclass.findMethod(expr.method.lexeme) ?: throw RuntimeError(expr.method, "Undefined property '${expr.method.lexeme}'.")
+        val method = superclass.findMethod(expr.method.lexeme) ?: throw RuntimeError(
+            expr.method,
+            "Undefined property '${expr.method.lexeme}'."
+        )
         return method.bind(obj)
     }
 
@@ -181,7 +184,7 @@ class Interpreter : Expr.Visitor<Any?>, Stmt.Visitor<Unit> {
         locals[expr] = depth
     }
 
-    public fun executeBlock(statements: List<Stmt?>, environment: Environment) {
+    fun executeBlock(statements: List<Stmt?>, environment: Environment) {
         val previous = this.environment
         try {
             this.environment = environment
@@ -209,9 +212,8 @@ class Interpreter : Expr.Visitor<Any?>, Stmt.Visitor<Unit> {
             environment.define("super", superclass)
         }
 
-        val methods = stmt.methods
-                .map { it.name.lexeme to LoxFunction(it, environment, it.name.lexeme == "init") }
-                .toMap()
+        val methods =
+            stmt.methods.associate { it.name.lexeme to LoxFunction(it, environment, it.name.lexeme == "init") }
 
         val loxClass = LoxClass(stmt.name.lexeme, superclass, methods)
 

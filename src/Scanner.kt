@@ -1,14 +1,9 @@
-class Scanner {
-    private val source: String
+class Scanner(private val source: String) {
     private val tokens = mutableListOf<Token>()
-    private var start = 0;
-    private var current = 0;
-    private var line = 1;
+    private var start = 0
+    private var current = 0
+    private var line = 1
     private val digitRange = '0'..'9'
-
-    constructor(source: String) {
-        this.source = source
-    }
 
     fun scanTokens(): List<Token> {
         while (!isAtEnd()) {
@@ -22,8 +17,7 @@ class Scanner {
     private fun isAtEnd() = current >= source.length
 
     private fun scanToken() {
-        val c = advance()
-        when (c) {
+        when (val c = advance()) {
             '(' -> addToken(TokenType.LEFT_PAREN)
             ')' -> addToken(TokenType.RIGHT_PAREN)
             '{' -> addToken(TokenType.LEFT_BRACE)
@@ -45,7 +39,8 @@ class Scanner {
                     addToken(TokenType.SLASH)
                 }
             }
-            ' ', '\r', '\t' -> {}
+            ' ', '\r', '\t' -> {
+            }
             '\n' -> line++
             '"' -> string()
             in digitRange -> number()
@@ -53,7 +48,7 @@ class Scanner {
                 if (c.isAlpha()) {
                     identifier()
                 } else {
-                    error(line, "Unexpected character.")
+                    Lox.error(line, "Unexpected character.")
                 }
             }
         }
@@ -91,7 +86,7 @@ class Scanner {
 
         // Unterminated string
         if (isAtEnd()) {
-            error(line, "Unterminated string.")
+            Lox.error(line, "Unterminated string.")
             return
         }
 

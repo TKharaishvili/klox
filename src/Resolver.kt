@@ -40,7 +40,7 @@ class Resolver(private val interpreter: Interpreter) : Expr.Visitor<Unit>, Stmt.
 
         if (stmt.superclass != null) {
             if (stmt.name.lexeme == stmt.superclass.name.lexeme) {
-                Lox.error(stmt.superclass.name,"A class can't inherit from itself.")
+                Lox.error(stmt.superclass.name, "A class can't inherit from itself.")
             }
 
             currentClass = ClassType.SUBCLASS

@@ -1,6 +1,7 @@
-class LoxFunction(private val declaration: Stmt.Function,
-                  private val closure: Environment,
-                  private val isInitializer: Boolean
+class LoxFunction(
+    private val declaration: Stmt.Function,
+    private val closure: Environment,
+    private val isInitializer: Boolean
 ) : LoxCallable {
     override val arity: Int
         get() = declaration.params.size

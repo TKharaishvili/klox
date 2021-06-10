@@ -1,7 +1,7 @@
 import java.lang.RuntimeException
 
 class Parser(private val tokens: List<Token>) {
-    private class ParseError: RuntimeException()
+    private class ParseError : RuntimeException()
 
     private var current = 0
 
@@ -189,7 +189,8 @@ class Parser(private val tokens: List<Token>) {
 
     private fun equality() = binary(::comparison, TokenType.BANG_EQUAL, TokenType.EQUAL_EQUAL)
 
-    private fun comparison() = binary(::addition, TokenType.GREATER, TokenType.GREATER_EQUAL, TokenType.LESS, TokenType.LESS_EQUAL)
+    private fun comparison() =
+        binary(::addition, TokenType.GREATER, TokenType.GREATER_EQUAL, TokenType.LESS, TokenType.LESS_EQUAL)
 
     private fun addition() = binary(::multiplication, TokenType.MINUS, TokenType.PLUS)
 
@@ -199,7 +200,11 @@ class Parser(private val tokens: List<Token>) {
         return binaryOrLogical(operation, { l, o, r -> Expr.Binary(l, o, r) }, *types)
     }
 
-    private fun binaryOrLogical(operation: () -> Expr, ctor: (left: Expr, operator: Token, right: Expr) -> Expr, vararg types: TokenType): Expr {
+    private fun binaryOrLogical(
+        operation: () -> Expr,
+        ctor: (left: Expr, operator: Token, right: Expr) -> Expr,
+        vararg types: TokenType
+    ): Expr {
         var expr = operation()
 
         while (match(*types)) {
